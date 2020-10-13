@@ -1,23 +1,27 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '../config/config.service';
 
 const _queries = {
-  hotel: function (q, limit, page) {
+  hotel: function (index, q, limit, page) {
     let dsl = {
+      index,
       from: ((page - 1) * limit),
       size: limit,
-      _source: [],
+      _source: ['hotel_id', 'hotel_name', 'hotel_geo_location', 'hotel_address_full', 'hotel_city', 'hotel_state_province', 'hotel_country', 'hotel_postal_code', 'hotel_rank', 'highlight'],
       body: {
         query: {
-          must: [{
-            match: {
-              'hotel_name.ignore_norm_shingle': q
-            }
-          }],
-          should: [{
-            match: {
-              'hotel_name.nori': q
-            }
-          }]
+          bool: {
+            must: [{
+              match: {
+                'hotel_name.ignore_norm_shingle': q
+              }
+            }],
+            should: [{
+              match: {
+                'hotel_name.nori': q
+              }
+            }]
+          }
         },
         highlight: {
           pre_tags: ['$'],
@@ -29,7 +33,7 @@ const _queries = {
                   should: [{
                     multi_match: {
                       query: q,
-                      analyzer: 'ngram_analyzer',
+                      analyzer: 'edge_ngram_analyzer',
                       operator: 'and'
                     }
                   }, {
@@ -83,11 +87,12 @@ const _queries = {
     }
     return dsl
   },
-  city: function (q, limit, page) {
+  city: function (index, q, limit, page) {
     let dsl = {
+      index,
       from: ((page - 1) * limit),
       size: limit,
-      _source: [],
+      _source: ['id', 'city', 'province_state', 'neighborhood', 'name_full', 'region_geo_location', 'highlight'],
       body: {
         query: {
           bool: {
@@ -127,11 +132,12 @@ const _queries = {
     }
     return dsl
   },
-  station: function (q, limit, page) {
+  station: function (index, q, limit, page) {
     let dsl = {
+      index,
       from: ((page - 1) * limit),
       size: limit,
-      _source: [],
+      _source: ['id', 'train_station', 'metro_station', 'name_full', 'region_geo_location', 'highlight'],
       body: {
         query: {
           'multi_match': {
@@ -166,11 +172,12 @@ const _queries = {
     }
     return dsl
   },
-  poi: function (q, limit, page) {
+  poi: function (index, q, limit, page) {
     let dsl = {
+      index,
       from: ((page - 1) * limit),
       size: limit,
-      _source: [],
+      _source: ['id', 'point_of_interest', 'high_level_region', 'name_full', 'region_geo_location', 'highlight'],
       body: {
         query: {
           bool: {
@@ -211,11 +218,12 @@ const _queries = {
     }
     return dsl
   },
-  airport: function (q, limit, page) {
+  airport: function (index, q, limit, page) {
     let dsl = {
+      index,
       from: ((page - 1) * limit),
       size: limit,
-      _source: [],
+      _source: ['id', 'airport', 'name_full', 'region_geo_location', 'highlight'],
       body: {
         query: {
           'multi_match': {
@@ -248,18 +256,19 @@ const _queries = {
         }
       }
     }
+    return dsl
   }
 }
 
 @Injectable()
 export class QueryService {
-  private readonly queries: { [key: string]: any };
+  private readonly queries: { [key: string]: any }
   
   constructor () {
     this.queries = _queries
   }
 
-  get (type:string, q, limit, page) {
-    return this.queries[type](q, limit, page)
+  get (index: string, type:string, q, limit, page) {
+    return this.queries[type](index, q, limit, page)
   }
 }
