@@ -2,13 +2,15 @@ import { Injectable, Get, Module } from '@nestjs/common';
 import * as _ from 'lodash'
 import { ElasticsearchService } from '@nestjs/elasticsearch'
 import { ConfigService } from '../config/config.service'
-import { QueryService } from '../query/query.service';
+import { QueryService } from '../query/query.service'
+import * as CONST from '../consts.json'
 
 @Injectable()
 export class SearchService {
   private nomalizer = {
     hotel: function (list) {
-      !list || list.length < 1 ? [] : list.map((v: any, k: string ) => {
+      return !list || list.length < 1 ? [] : list.map((v: any, k: string ) => {
+        // console.log('v : ', v)
         return {
           doc_id: v._id,
           category: 'H',
@@ -53,32 +55,20 @@ export class SearchService {
     const {results: stationResult, total: stationTotal} = await this.searchStation(search, {limit, page})
     const {results: poiResult, total: poiTotal} = await this.searchPOI(search, {limit, page})
     const {results: airportResult, total: airportTotal} = await this.searchAirport(search, {limit, page})
-    return test
+    return hotelResult
     // const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search)
     // const {query: cityQuery, highlight: cityHighlight} = this.queryService.get('city', search)
   }
 
-  async searchHotel(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
-
-    const {body} = await this.esService.search({
-      index: this.configService.get('ELASTICSEARCH_INDEX'),
-      size: 10,
-      body: {
-        query: hotelQuery,
-        highlight: hotelHighlight
-      }
-    })
-
-    const hits = body.hits.hits
-    const results = hits.map(item => {
-      return item._source
-    })
+  async searchHotel(search: string, {limit = 10, page = 1}) {
+    const hotelQuery = this.queryService.get(this.configService.get('ELASTICSEARCH_INDEX') , 'hotel', search, limit, page)
+    const { body } = await this.esService.search(hotelQuery)
+    const results = this.nomalizer.hotel(body.hits.hits)
     return {total: body.hits.total.value, results}
   }
 
   async searchCity(search: string, {limit, page}) {
-    const {query: cityQuery, highlight: cityHighlight} = this.queryService.get('city', search, limit, page)
+    const {query: cityQuery, highlight: cityHighlight} = this.queryService.get(this.configService.get('ELASTICSEARCH_INDEX') , 'city', search, limit, page)
 
     const {body} = await this.esService.search({
       index: this.configService.get('ELASTICSEARCH_INDEX'),
@@ -97,7 +87,7 @@ export class SearchService {
   }
 
   async searchStation(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
+    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get(this.configService.get('ELASTICSEARCH_INDEX') , 'hotel', search, limit, page)
 
     const {body} = await this.esService.search({
       index: this.configService.get('ELASTICSEARCH_INDEX'),
@@ -116,7 +106,7 @@ export class SearchService {
   }
 
   async searchPOI(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
+    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get(this.configService.get('ELASTICSEARCH_INDEX') , 'hotel', search, limit, page)
 
     const {body} = await this.esService.search({
       index: this.configService.get('ELASTICSEARCH_INDEX'),
@@ -135,7 +125,7 @@ export class SearchService {
   }
 
   async searchAirport(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
+    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get(this.configService.get('ELASTICSEARCH_INDEX') , 'hotel', search, limit, page)
 
     const {body} = await this.esService.search({
       index: this.configService.get('ELASTICSEARCH_INDEX'),
