@@ -104,4 +104,8 @@ export class SearchService {
     const results = this.nomalizer.region('airport', body.hits.hits)
     return {total: body.hits.total.value, results}
   }
+
+  async searchDistance(lat, lon, distance, {limit = 10, page = 1}) {
+    return {}
+  }
 }

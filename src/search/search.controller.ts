@@ -11,8 +11,8 @@ export class SearchController {
     return result
   }
 
-  // @Get('all')
-  // async searchAll(@Query('q') query?: string) {
-  //   return this.searchService.searchAll(query)
+  // @Get('/distanc')
+  // async searchAll(@Query() queryParams?: {lat: number, lon: number, distance: string, page: number, size: number}) {
+  //   return this.searchService.searhcWithDistance(lat, lon, distance, {limit: queryParams.size, page: queryParams.page})
   // }
 }
