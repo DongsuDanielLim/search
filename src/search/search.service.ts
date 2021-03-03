@@ -6,19 +6,18 @@ import { QueryService } from '../query/query.service';
 
 @Injectable()
 export class SearchService {
-  private nomalizer = {
-    hotel: function (list) {
-      !list || list.length < 1 ? [] : list.map((v: any, k: string ) => {
-        return {
-          doc_id: v._id,
-          category: 'H',
-          hotel_name_full: [v._source.hotel_name, v._source.hotel_city].join(' '),
-          highlight_hotel_name: v.highlight && v.highlight.hotel_name ? v.highlight.hotel_name : null,
-          highlight_hotel_city: v.highlight && v.highlight.hotel_city ? v.highlight.hotel_city : null
-        }
+  private normalizer = {
+    hotel: function ({total = {value: 0}, hits: list = []}) {
+      return !list || list.length < 1 ? [] : list.map((v: any) => {
+        let each = v._source
+        each.doc_id = v.hotel_id
+        each.hotel_name_full = [v.hotel_name || '', v.hotel_city || ''].join(' ')
+        each.highlight_hotel_name = v.highlight && v.highlight.hotel_name ? v.highlight.hotel_name : null
+        each.highlight_hotel_city = v.highlight && v.highlight.hotel_city ? v.highlight.hotel_city : null
+        return each
       })
     },
-    region: function (type, list) {
+    region: function (type, {total = {value:0}, hits: list = []}) {
       const typeFieldsDic = {
         city: ['city', 'province_state', 'neighborhood'],
         poi: ['point_of_interest', 'high_level_region'],
@@ -31,7 +30,7 @@ export class SearchService {
         accum.push({
           ...doc._source,
           doc_id: doc._id.replace('R', ''),
-          category: CONST.SEARCH_CATEGORY[currentType[0].toUpperCase()] || CONST.SEARCH_CATEGORY.REGION,
+          category: 'R',
           highlight_name_full: doc.highlight && doc.highlight.name_full ? doc.highlight.name_full : null
         })
         return accum
@@ -47,109 +46,76 @@ export class SearchService {
     ) {}
   
   
-  async searchAll(search: string, {limit, page}) {
-    const {results: hotelResult, total: hotelTotal} = await this.searchHotel(search, {limit, page})
-    const {results: cityResult, total: cityTotal} = await this.searchCity(search, {limit, page})
-    const {results: stationResult, total: stationTotal} = await this.searchStation(search, {limit, page})
-    const {results: poiResult, total: poiTotal} = await this.searchPOI(search, {limit, page})
-    const {results: airportResult, total: airportTotal} = await this.searchAirport(search, {limit, page})
-    return test
-    // const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search)
-    // const {query: cityQuery, highlight: cityHighlight} = this.queryService.get('city', search)
+  async searchAll(search: string, {limit = 10, page = 1}) {
+    const index = this.configService.get('ELASTICSEARCH_INDEX')
+
+    const hotelDsl =  this.queryService.get(index, 'hotel', search, limit, page)
+    const cityDsl = this.queryService.get(index, 'city', search, limit, page)
+    const stationDsl = this.queryService.get(index, 'station', search, limit, page)
+    const poiDsl = this.queryService.get(index, 'poi', search, limit, page)
+    const airportDsl = this.queryService.get(index, 'airport', search, limit, page)
+
+    const [hotelResult, cityResult, stationResult, poiResult, airportResult] = await Promise.all([
+      this.esService.search(hotelDsl),
+      this.esService.search(cityDsl),
+      this.esService.search(stationDsl),
+      this.esService.search(poiDsl),
+      this.esService.search(airportDsl)
+    ])
+
+    return {
+      hotel: this.normalizer.hotel(hotelResult.body.hits),
+      region: {
+        city: this.normalizer.region('city', cityResult.body.hits),
+        point_of_interest: this.normalizer.region('poi', poiResult.body.hits),
+        metro_station: this.normalizer.region('station', stationResult.body.hits),
+        airport: this.normalizer.region('airport', airportResult.body.hits)
+      }
+    }
   }
 
   async searchHotel(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
-
-    const {body} = await this.esService.search({
-      index: this.configService.get('ELASTICSEARCH_INDEX'),
-      size: 10,
-      body: {
-        query: hotelQuery,
-        highlight: hotelHighlight
-      }
-    })
-
-    const hits = body.hits.hits
-    const results = hits.map(item => {
-      return item._source
-    })
-    return {total: body.hits.total.value, results}
+    try {
+      const index = this.configService.get('ELASTICSEARCH_INDEX')
+      const hotelDsl = this.queryService.get(index, 'hotel', search, limit, page)
+      const {body} = await this.esService.search(hotelDsl)
+      return this.normalizer.hotel(body.gits)
+    } catch (e) {
+    }
   }
 
   async searchCity(search: string, {limit, page}) {
-    const {query: cityQuery, highlight: cityHighlight} = this.queryService.get('city', search, limit, page)
-
-    const {body} = await this.esService.search({
-      index: this.configService.get('ELASTICSEARCH_INDEX'),
-      size: 10,
-      body: {
-        query: cityQuery,
-        highlight: cityHighlight
-      }
-    })
-
-    const hits = body.hits.hits
-    const results = hits.map(item => {
-      return item._source
-    })
-    return {total: body.hits.total.value, results}
+    const index = this.configService.get('ELASTICSEARCH_INDEX')
+    const cityDsl = this.queryService.get(index, 'city', search, limit, page)
+    const {body} = await this.esService.search(cityDsl)
+    return this.normalizer.region('city', body.gits)
   }
 
   async searchStation(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
-
-    const {body} = await this.esService.search({
-      index: this.configService.get('ELASTICSEARCH_INDEX'),
-      size: 10,
-      body: {
-        query: hotelQuery,
-        highlight: hotelHighlight
-      }
-    })
-
-    const hits = body.hits.hits
-    const results = hits.map(item => {
-      return item._source
-    })
-    return {total: body.hits.total.value, results}
+    const index = this.configService.get('ELASTICSEARCH_INDEX')
+    const stationDsl = this.queryService.get(index, 'station', search, limit, page)
+    const {body} = await this.esService.search(stationDsl)
+    return this.normalizer.region('station', body.gits)
   }
 
   async searchPOI(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
-
-    const {body} = await this.esService.search({
-      index: this.configService.get('ELASTICSEARCH_INDEX'),
-      size: 10,
-      body: {
-        query: hotelQuery,
-        highlight: hotelHighlight
-      }
-    })
-
-    const hits = body.hits.hits
-    const results = hits.map(item => {
-      return item._source
-    })
-    return {total: body.hits.total.value, results}
+    const index = this.configService.get('ELASTICSEARCH_INDEX')
+    const poiDsl = this.queryService.get(index, 'poi', search, limit, page)
+    const {body} = await this.esService.search(poiDsl)
+    return this.normalizer.region('poi', body.gits)
   }
 
   async searchAirport(search: string, {limit, page}) {
-    const {query: hotelQuery, highlight: hotelHighlight} = this.queryService.get('hotel', search, limit, page)
+    const index = this.configService.get('ELASTICSEARCH_INDEX')
+    const airportDsl = this.queryService.get(index, 'airport', search, limit, page)
+    const {body} = await this.esService.search(airportDsl)
+    return this.normalizer.region('airport', body.gits)
+  }
 
-    const {body} = await this.esService.search({
-      index: this.configService.get('ELASTICSEARCH_INDEX'),
-      size: 10,
-      body: {
-        query: hotelQuery,
-        highlight: hotelHighlight
-      }
-    })
-
-    const hits = body.hits.hits
-    const results = hits.map(item => {
-      return item._source
-    })
-    return {total: body.hits.total.value, results}
+  async searchWithDistance(distance: string, lat: number, lon: number, {limit = 10, page = 1}) {
+    const index = this.configService.get('ELASTICSEARCH_INDEX')
+    const distanceDsl = this.queryService.getDistance(index, distance, lat, lon, limit, page)
+    const {body} = await this.esService.search(distanceDsl)
+    return body.hits
   }
 }

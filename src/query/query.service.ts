@@ -257,6 +257,26 @@ const _queries = {
       }
     }
     return dsl
+  },
+  distance: function (index, {distance = 5, lat, lon}, limit, page) {
+    let dsl = {
+      index,
+      from: ((page - 1) * limit) || 0,
+      size: limit,
+      _source: ['hotel_id', 'hotel_name', 'hotel_geo_location', 'hotel_address_full', 'hotel_city', 'hotel_state_province', 'hotel_country', 'hotel_postal_code', 'highlight'],
+      body: {
+        query: {
+          geo_distance: {
+            distance: distance + 'km',
+            hotel_geo_location: {
+              lat: parseFloat(lat), // 40.758741 // float.6,
+              lon: parseFloat(lon) // -73.989322 // float.6
+            }
+          }
+        }
+      }
+    }
+    return dsl
   }
 }
 
@@ -270,5 +290,9 @@ export class QueryService {
 
   get (index: string, type:string, q, limit, page) {
     return this.queries[type](index, q, limit, page)
+  }
+
+  getDistance (index: string, distance: string, lat: number, lon: number, limit, page) {
+    return this.queries.distance(index, {distance, lat, lon}, limit, page)
   }
 }
