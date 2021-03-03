@@ -1,0 +1,35 @@
+{
+  "SEARCH_INDEX": "hotel_region_3.12.3",
+  "SEARCH_CITIES_PROVINCE_INDEX": "cities_in_province_0.1.1",
+  "SEARCH_PROVINCE_CONTAIN_CITIES": "province_state_contain_cities_0.1.1",
+  "SEARCH_CATEGORY": {
+    "HOTEL": "H",
+    "REGION": "R",
+    "CONTINENT": "R",
+    "COUNTRY": "R",
+    "CITY": "R",
+    "POINT_OF_INTEREST": "P",
+    "PROVINCE_STATE": "R",
+    "HIGH_LEVEL_REGION": "R",
+    "NEIGHBORHOOD": "R",
+    "MULTI_CITY_VICINITY": "R",
+    "TRAIN_STATION": "S",
+    "METRO_STATION": "S",
+    "AIRPORT": "A"
+  },
+  "LANGUAGE": "ko",
+  "SEARCH_MODEL": {
+    "PAGE": 1,
+    "LIMIT": {
+      "HOTEL": 10,
+      "CITY": 10,
+      "POI": 3,
+      "STATION": 3,
+      "AIRPORT": 3,
+      "DISTANCE": 50,
+      "INTERSECTION": 50,
+      "DEFAULT": 10
+    },
+    "DISTANCE": "5km"
+  }
+}

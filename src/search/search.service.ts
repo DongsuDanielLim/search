@@ -2,7 +2,7 @@ import { Injectable, Get, Module } from '@nestjs/common';
 import * as _ from 'lodash'
 import { ElasticsearchService } from '@nestjs/elasticsearch'
 import { ConfigService } from '../config/config.service'
-import { QueryService } from '../query/query.service';
+import { QueryService } from '../query/query.service'
 
 @Injectable()
 export class SearchService {
