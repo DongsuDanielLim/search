@@ -20,6 +20,35 @@ const _queries = {
               match: {
                 'hotel_name.nori': q
               }
+            },
+            {
+              match: {
+                'hotel_name.ngram': q
+              }
+            },
+            {
+              match: {
+                hotel_state_province: q
+              }
+            },
+            {
+              match: {
+                hotel_city: q
+              }
+            },
+            {
+              match_phrase: {
+                hotel_name: {
+                  query: q,
+                  slop: 5
+                }
+              }
+            },
+            {
+              rank_feature: {
+                field: 'hotel_rank',
+                boost: 11
+              }
             }]
           }
         },
@@ -277,6 +306,67 @@ const _queries = {
       }
     }
     return dsl
+  },
+  citiesProvinceKR: function (q, limit, page) {
+    const boolMatch = (q || '').split(' ').map(e => {
+      return e.trim()
+    }).reduce((accumulate, term) => {
+      accumulate.push({
+        multi_match: {
+          query: term,
+          fields: ['label', 'name'],
+          type: 'best_fields',
+          analyzer: 'standard',
+          operator: 'and'
+        }
+      })
+      return accumulate
+    }, [])
+
+    const provinceQuery = {
+      multi_match: {
+        query: q,
+        fields: ['name'],
+        type: 'best_fields',
+        operator: 'and',
+        analyzer: 'standard'
+      }
+    }
+
+    const highlightQuery = {
+      pre_tags: ['$'],
+      post_tags: ['?'],
+      fields: {
+        name_full: {
+          highlight_query: {
+            bool: {
+              should: [{
+                multi_match: {
+                  query: q,
+                  analyzer: 'standard'
+                }
+              }, {
+                multi_match: {
+                  query: q,
+                  analyzer: 'edge_ngram_pcc_analyzer'
+                }
+              }]
+            }
+          }
+        }
+      }
+    }
+
+    const query = {
+      body: [
+        { index: 'cities_in_province_0.1.1' },
+        { _source: ['id', 'name', 'name_full', 'label', 'type', 'geo_location'], query: { 'bool': { 'must': boolMatch } }, highlight: highlightQuery },
+        { index: 'province_state_contain_cities_0.1.1' },
+        { _source: ['id', 'name', 'name_full', 'geo_location'], query: { 'bool': { 'must': provinceQuery } }, highlight: highlightQuery }
+      ]
+    }
+
+    return query
   }
 }
 
@@ -294,5 +384,9 @@ export class QueryService {
 
   getDistance (index: string, distance: string, lat: number, lon: number, limit, page) {
     return this.queries.distance(index, {distance, lat, lon}, limit, page)
+  }
+
+  getCitiesProvinceKR (q, limit, page) {
+    return this.queries.citiesProvinceKR(q, limit, page)
   }
 }
