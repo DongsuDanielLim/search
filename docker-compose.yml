@@ -1,9 +1,0 @@
-version: '3.0'
-
-services:
-  server:
-    image: searchserver:1.0.0
-    volumes:
-      - .:/server
-    ports:
-      - 8801:8801
